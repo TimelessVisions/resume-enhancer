@@ -58,17 +58,6 @@
     console.log('[resume-enhancer] pasted resume text length:', resume.length);
     console.log('[resume-enhancer] jobTitle:', jobTitle);
 
-    if (!resume && !file) {
-      console.log('[resume-enhancer] Validation failed: no resume text and no file detected.');
-      showFormError('Please paste your resume text or upload a PDF/DOCX file.');
-      return;
-    }
-    if (!jobTitle) {
-      console.log('[resume-enhancer] Validation failed: no job title.');
-      showFormError('Please enter the job title you are applying for.');
-      return;
-    }
-
     enhanceBtn.disabled = true;
     enhanceBtn.textContent = 'Redirecting to payment...';
 
