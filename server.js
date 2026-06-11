@@ -14,29 +14,40 @@ const PORT = process.env.PORT || 3000;
 const PRICE_USD_CENTS = 500; // $5.00
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB
 
+const PDF_MIMETYPES = new Set(['application/pdf']);
+const DOCX_MIMETYPES = new Set([
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+
+// Multer config: store uploaded file in memory, limit size, restrict to PDF/DOCX.
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_UPLOAD_BYTES },
+  fileFilter: (req, file, cb) => {
+    const name = (file.originalname || '').toLowerCase();
+    const isPdf = PDF_MIMETYPES.has(file.mimetype) || name.endsWith('.pdf');
+    const isDocx = DOCX_MIMETYPES.has(file.mimetype) || name.endsWith('.docx');
+
+    if (!isPdf && !isDocx) {
+      return cb(new Error('Unsupported file type. Please upload a PDF or DOCX file.'));
+    }
+    cb(null, true);
+  },
 });
 
-// Extract plain text from an uploaded PDF or DOCX file.
-async function extractTextFromFile(file) {
+// Extract plain text from an uploaded PDF or DOCX file buffer.
+async function extractResumeText(file) {
   const name = (file.originalname || '').toLowerCase();
+  const isPdf = PDF_MIMETYPES.has(file.mimetype) || name.endsWith('.pdf');
 
-  if (file.mimetype === 'application/pdf' || name.endsWith('.pdf')) {
+  if (isPdf) {
     const data = await pdfParse(file.buffer);
-    return data.text.trim();
+    return (data.text || '').trim();
   }
 
-  if (
-    file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-    name.endsWith('.docx')
-  ) {
-    const result = await mammoth.extractRawText({ buffer: file.buffer });
-    return result.value.trim();
-  }
-
-  throw new Error('Unsupported file type. Please upload a PDF or DOCX file.');
+  // Otherwise treat as DOCX (fileFilter already rejected anything else).
+  const result = await mammoth.extractRawText({ buffer: file.buffer });
+  return (result.value || '').trim();
 }
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -82,29 +93,31 @@ function getBaseUrl(req) {
   return `${protocol}://${host}`;
 }
 
+// Simple connectivity check.
+app.get('/test', (req, res) => {
+  res.send('server is working');
+});
+
 // Create a Stripe Checkout session for the $5 resume enhancement.
 app.post('/api/create-checkout-session', upload.single('resumeFile'), async (req, res) => {
   try {
-    console.log('[create-checkout-session] req.file:', req.file ? {
-      fieldname: req.file.fieldname,
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-    } : null);
-    console.log('[create-checkout-session] req.body keys:', Object.keys(req.body || {}));
-    console.log('[create-checkout-session] req.body.jobTitle:', req.body.jobTitle);
-    console.log('[create-checkout-session] req.body.resumeText length:', typeof req.body.resumeText === 'string' ? req.body.resumeText.length : 'n/a');
-
     const jobTitle = typeof req.body.jobTitle === 'string' ? req.body.jobTitle.trim() : '';
     let resume = typeof req.body.resumeText === 'string' ? req.body.resumeText.trim() : '';
 
+    console.log('[create-checkout-session] file:', req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+    } : 'none');
+    console.log('[create-checkout-session] jobTitle:', jobTitle, '| resumeText length:', resume.length);
+
     if (req.file) {
       try {
-        resume = await extractTextFromFile(req.file);
-        console.log('[create-checkout-session] Extracted text length from file:', resume.length);
+        resume = await extractResumeText(req.file);
+        console.log('[create-checkout-session] extracted text length:', resume.length);
       } catch (err) {
-        console.error('[create-checkout-session] File extraction error:', err);
-        return res.status(400).json({ error: err.message || 'Failed to read uploaded file.' });
+        console.error('[create-checkout-session] extraction error:', err);
+        return res.status(400).json({ error: 'Failed to read uploaded file. Please make sure it is a valid PDF or DOCX.' });
       }
     }
 
@@ -220,7 +233,7 @@ app.get('/healthz', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Handle multer errors (e.g. file too large) with a friendly JSON response.
+// Handle multer errors (e.g. file too large, wrong type) with a friendly JSON response.
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
@@ -228,7 +241,11 @@ app.use((err, req, res, next) => {
     }
     return res.status(400).json({ error: err.message });
   }
-  next(err);
+  if (err) {
+    console.error('Unhandled error:', err);
+    return res.status(400).json({ error: err.message || 'Request failed.' });
+  }
+  next();
 });
 
 app.listen(PORT, () => {
