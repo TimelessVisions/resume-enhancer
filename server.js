@@ -85,13 +85,25 @@ function getBaseUrl(req) {
 // Create a Stripe Checkout session for the $5 resume enhancement.
 app.post('/api/create-checkout-session', upload.single('resumeFile'), async (req, res) => {
   try {
+    console.log('[create-checkout-session] req.file:', req.file ? {
+      fieldname: req.file.fieldname,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+    } : null);
+    console.log('[create-checkout-session] req.body keys:', Object.keys(req.body || {}));
+    console.log('[create-checkout-session] req.body.jobTitle:', req.body.jobTitle);
+    console.log('[create-checkout-session] req.body.resumeText length:', typeof req.body.resumeText === 'string' ? req.body.resumeText.length : 'n/a');
+
     const jobTitle = typeof req.body.jobTitle === 'string' ? req.body.jobTitle.trim() : '';
     let resume = typeof req.body.resumeText === 'string' ? req.body.resumeText.trim() : '';
 
     if (req.file) {
       try {
         resume = await extractTextFromFile(req.file);
+        console.log('[create-checkout-session] Extracted text length from file:', resume.length);
       } catch (err) {
+        console.error('[create-checkout-session] File extraction error:', err);
         return res.status(400).json({ error: err.message || 'Failed to read uploaded file.' });
       }
     }

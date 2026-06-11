@@ -22,6 +22,7 @@
 
   resumeFileInput.addEventListener('change', () => {
     const file = resumeFileInput.files[0];
+    console.log('[resume-enhancer] file input change event. files:', resumeFileInput.files, 'selected file:', file);
     fileNameEl.textContent = file ? file.name : '';
   });
 
@@ -50,11 +51,20 @@
       ? resumeFileInput.files[0]
       : null;
 
+    console.log('[resume-enhancer] Enhance button clicked.');
+    console.log('[resume-enhancer] resumeFileInput element:', resumeFileInput);
+    console.log('[resume-enhancer] resumeFileInput.files:', resumeFileInput.files);
+    console.log('[resume-enhancer] detected file:', file);
+    console.log('[resume-enhancer] pasted resume text length:', resume.length);
+    console.log('[resume-enhancer] jobTitle:', jobTitle);
+
     if (!resume && !file) {
+      console.log('[resume-enhancer] Validation failed: no resume text and no file detected.');
       showFormError('Please paste your resume text or upload a PDF/DOCX file.');
       return;
     }
     if (!jobTitle) {
+      console.log('[resume-enhancer] Validation failed: no job title.');
       showFormError('Please enter the job title you are applying for.');
       return;
     }
@@ -69,8 +79,19 @@
       formData.append('jobTitle', jobTitle);
       if (file) {
         formData.append('resumeFile', file);
+        console.log('[resume-enhancer] Appended resumeFile to FormData:', file.name, file.type, file.size, 'bytes');
       } else {
         formData.append('resumeText', resume);
+        console.log('[resume-enhancer] Appended resumeText to FormData, length:', resume.length);
+      }
+
+      console.log('[resume-enhancer] FormData contents:');
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: File(name=${value.name}, type=${value.type}, size=${value.size})`);
+        } else {
+          console.log(`  ${key}:`, value);
+        }
       }
 
       const res = await fetch('/api/create-checkout-session', {
@@ -78,7 +99,10 @@
         body: formData,
       });
 
+      console.log('[resume-enhancer] /api/create-checkout-session response status:', res.status);
+
       const data = await res.json();
+      console.log('[resume-enhancer] /api/create-checkout-session response body:', data);
 
       if (!res.ok) {
         throw new Error(data.error || 'Failed to start checkout.');
