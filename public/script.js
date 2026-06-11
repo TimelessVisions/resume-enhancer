@@ -46,7 +46,9 @@
     clearFormError();
     const resume = resumeInput.value.trim();
     const jobTitle = jobTitleInput.value.trim();
-    const file = resumeFileInput.files[0];
+    const file = resumeFileInput.files && resumeFileInput.files.length > 0
+      ? resumeFileInput.files[0]
+      : null;
 
     if (!resume && !file) {
       showFormError('Please paste your resume text or upload a PDF/DOCX file.');
