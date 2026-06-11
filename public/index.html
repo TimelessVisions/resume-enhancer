@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resume Enhancer — AI-Powered Resume Rewriting</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <h1>✨ Resume Enhancer</h1>
+      <p class="subtitle">Get your resume rewritten by AI, tailored to the job you want — for just $5.</p>
+    </header>
+
+    <main class="container">
+      <!-- Input form -->
+      <section id="formSection" class="card">
+        <div class="field">
+          <label for="resumeInput">Paste your resume</label>
+          <textarea id="resumeInput" rows="14" placeholder="Paste your full resume text here..."></textarea>
+        </div>
+
+        <div class="field">
+          <label for="jobTitleInput">Job title you're applying for</label>
+          <input type="text" id="jobTitleInput" placeholder="e.g. Senior Product Manager" />
+        </div>
+
+        <div id="formError" class="error hidden"></div>
+
+        <button id="enhanceBtn" class="btn btn-primary">
+          Enhance My Resume — $5
+        </button>
+
+        <p class="fineprint">
+          You'll be redirected to Stripe to securely complete a one-time $5 payment.
+          After payment, your enhanced resume will be generated automatically.
+        </p>
+      </section>
+
+      <!-- Loading state -->
+      <section id="loadingSection" class="card hidden">
+        <div class="spinner"></div>
+        <p>Enhancing your resume with AI... this may take a few seconds.</p>
+      </section>
+
+      <!-- Error state (after payment) -->
+      <section id="resultErrorSection" class="card hidden">
+        <h2>Something went wrong</h2>
+        <p id="resultErrorMessage"></p>
+        <button id="restartBtn" class="btn btn-secondary">Start Over</button>
+      </section>
+
+      <!-- Results -->
+      <section id="resultsSection" class="card hidden">
+        <h2>Your Enhanced Resume</h2>
+        <p class="results-subtitle">Tailored for: <strong id="resultJobTitle"></strong></p>
+
+        <div class="comparison">
+          <div class="comparison-col">
+            <h3>Before</h3>
+            <pre id="originalResume" class="resume-box"></pre>
+          </div>
+          <div class="comparison-col">
+            <h3>After</h3>
+            <pre id="enhancedResume" class="resume-box enhanced"></pre>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="copyBtn" class="btn btn-secondary">Copy Enhanced Resume</button>
+          <button id="restartBtn2" class="btn btn-secondary">Enhance Another Resume</button>
+        </div>
+      </section>
+
+      <!-- Canceled payment notice -->
+      <section id="canceledSection" class="card hidden">
+        <h2>Payment Canceled</h2>
+        <p>No charge was made. You can try again whenever you're ready.</p>
+        <button id="restartBtn3" class="btn btn-secondary">Back to Form</button>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Powered by Claude AI &middot; Payments securely processed by Stripe</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
