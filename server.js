@@ -6,9 +6,38 @@ const cors = require('cors');
 const Stripe = require('stripe');
 const Anthropic = require('@anthropic-ai/sdk');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
 
 const PORT = process.env.PORT || 3000;
 const PRICE_USD_CENTS = 500; // $5.00
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_BYTES },
+});
+
+// Extract plain text from an uploaded PDF or DOCX file.
+async function extractTextFromFile(file) {
+  const name = (file.originalname || '').toLowerCase();
+
+  if (file.mimetype === 'application/pdf' || name.endsWith('.pdf')) {
+    const data = await pdfParse(file.buffer);
+    return data.text.trim();
+  }
+
+  if (
+    file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    name.endsWith('.docx')
+  ) {
+    const result = await mammoth.extractRawText({ buffer: file.buffer });
+    return result.value.trim();
+  }
+
+  throw new Error('Unsupported file type. Please upload a PDF or DOCX file.');
+}
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.error('Missing STRIPE_SECRET_KEY in environment.');
@@ -48,14 +77,23 @@ function getBaseUrl(req) {
 }
 
 // Create a Stripe Checkout session for the $5 resume enhancement.
-app.post('/api/create-checkout-session', async (req, res) => {
+app.post('/api/create-checkout-session', upload.single('resumeFile'), async (req, res) => {
   try {
-    const { resume, jobTitle } = req.body || {};
+    const jobTitle = typeof req.body.jobTitle === 'string' ? req.body.jobTitle.trim() : '';
+    let resume = typeof req.body.resumeText === 'string' ? req.body.resumeText.trim() : '';
 
-    if (typeof resume !== 'string' || !resume.trim()) {
-      return res.status(400).json({ error: 'Resume text is required.' });
+    if (req.file) {
+      try {
+        resume = await extractTextFromFile(req.file);
+      } catch (err) {
+        return res.status(400).json({ error: err.message || 'Failed to read uploaded file.' });
+      }
     }
-    if (typeof jobTitle !== 'string' || !jobTitle.trim()) {
+
+    if (!resume) {
+      return res.status(400).json({ error: 'Please paste your resume text or upload a PDF/DOCX file.' });
+    }
+    if (!jobTitle) {
       return res.status(400).json({ error: 'Job title is required.' });
     }
     if (resume.length > 20000) {
@@ -67,8 +105,8 @@ app.post('/api/create-checkout-session', async (req, res) => {
 
     const dataId = uuidv4();
     pendingSubmissions.set(dataId, {
-      resume: resume.trim(),
-      jobTitle: jobTitle.trim(),
+      resume,
+      jobTitle,
       createdAt: Date.now(),
     });
 
@@ -84,7 +122,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
             unit_amount: PRICE_USD_CENTS,
             product_data: {
               name: 'AI Resume Enhancement',
-              description: `Tailored resume rewrite for: ${jobTitle.trim()}`,
+              description: `Tailored resume rewrite for: ${jobTitle}`,
             },
           },
           quantity: 1,
@@ -162,6 +200,17 @@ app.get('/api/enhance', async (req, res) => {
 
 app.get('/healthz', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Handle multer errors (e.g. file too large) with a friendly JSON response.
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File is too large (max 5MB).' });
+    }
+    return res.status(400).json({ error: err.message });
+  }
+  next(err);
 });
 
 app.listen(PORT, () => {

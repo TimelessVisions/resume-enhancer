@@ -86,6 +86,32 @@ input[type="text"]:focus {
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
+input[type="file"] {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.file-name {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.divider-or {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 4px 0 18px;
+}
+
 .btn {
   display: inline-block;
   border: none;

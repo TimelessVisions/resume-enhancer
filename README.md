@@ -5,10 +5,12 @@ tailored to a specific job title — gated behind a one-time $5 Stripe payment.
 
 ## How it works
 
-1. User pastes their resume text and enters the job title they're applying for.
+1. User uploads their resume as a PDF or DOCX file (or pastes resume text directly)
+   and enters the job title they're applying for.
 2. Clicking **"Enhance My Resume — $5"** redirects them to a Stripe Checkout page.
 3. After successful payment, Stripe redirects back to the app.
-4. The backend verifies the payment with Stripe, then sends the resume to
+4. The backend verifies the payment with Stripe. If a file was uploaded, it extracts
+   the text using `pdf-parse` (PDF) or `mammoth` (DOCX), then sends the resume text to
    Claude (`claude-haiku-4-5-20251001`) to generate a tailored rewrite.
 5. The original ("Before") and AI-enhanced ("After") resumes are shown side by side.
 

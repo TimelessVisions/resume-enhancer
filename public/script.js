@@ -6,6 +6,8 @@
   const canceledSection = document.getElementById('canceledSection');
 
   const resumeInput = document.getElementById('resumeInput');
+  const resumeFileInput = document.getElementById('resumeFileInput');
+  const fileNameEl = document.getElementById('fileName');
   const jobTitleInput = document.getElementById('jobTitleInput');
   const enhanceBtn = document.getElementById('enhanceBtn');
   const formError = document.getElementById('formError');
@@ -17,6 +19,11 @@
   const copyBtn = document.getElementById('copyBtn');
 
   const STORAGE_KEY = 'resumeEnhancer.pendingSubmission';
+
+  resumeFileInput.addEventListener('change', () => {
+    const file = resumeFileInput.files[0];
+    fileNameEl.textContent = file ? file.name : '';
+  });
 
   function showSection(section) {
     [formSection, loadingSection, resultsSection, resultErrorSection, canceledSection].forEach((s) => {
@@ -39,9 +46,10 @@
     clearFormError();
     const resume = resumeInput.value.trim();
     const jobTitle = jobTitleInput.value.trim();
+    const file = resumeFileInput.files[0];
 
-    if (!resume) {
-      showFormError('Please paste your resume text.');
+    if (!resume && !file) {
+      showFormError('Please paste your resume text or upload a PDF/DOCX file.');
       return;
     }
     if (!jobTitle) {
@@ -53,14 +61,19 @@
     enhanceBtn.textContent = 'Redirecting to payment...';
 
     try {
-      // Save the original resume locally so we can show the "before" panel
-      // after returning from Stripe.
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ resume, jobTitle }));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ jobTitle }));
+
+      const formData = new FormData();
+      formData.append('jobTitle', jobTitle);
+      if (file) {
+        formData.append('resumeFile', file);
+      } else {
+        formData.append('resumeText', resume);
+      }
 
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume, jobTitle }),
+        body: formData,
       });
 
       const data = await res.json();
@@ -133,16 +146,6 @@
   const canceled = params.get('canceled');
 
   if (sessionId && dataId) {
-    // Restore original resume text for the "before" panel from this browser session
-    const stored = sessionStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        originalResumeEl.textContent = parsed.resume || '';
-      } catch (e) {
-        // ignore
-      }
-    }
     handlePostPayment(sessionId, dataId);
   } else if (canceled) {
     showSection(canceledSection);

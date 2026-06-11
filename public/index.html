@@ -17,8 +17,16 @@
       <!-- Input form -->
       <section id="formSection" class="card">
         <div class="field">
-          <label for="resumeInput">Paste your resume</label>
-          <textarea id="resumeInput" rows="14" placeholder="Paste your full resume text here..."></textarea>
+          <label for="resumeFileInput">Upload your resume (PDF or DOCX)</label>
+          <input type="file" id="resumeFileInput" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+          <span id="fileName" class="file-name"></span>
+        </div>
+
+        <div class="divider-or">or</div>
+
+        <div class="field">
+          <label for="resumeInput">Paste your resume text</label>
+          <textarea id="resumeInput" rows="12" placeholder="Paste your full resume text here..."></textarea>
         </div>
 
         <div class="field">
